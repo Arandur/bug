@@ -97,11 +97,7 @@ void Task::jump(int state) const {
  */
 std::string Task::getNext() const {
 
-#ifdef _WIN32
-  const static char FILE_SEP ='\\';
-#else
   const static char FILE_SEP = '/';
-#endif
 
   // Copy prgName to char buffer because dirname isn't guaranteed not to modify
   // its parameter
