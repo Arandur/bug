@@ -12,8 +12,21 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <libgen.h>
+#include <stdlib.h>
+#include <string.h>
 
 Task::Task(const std::string& prgName) :
+  prgName([prgName = prgName] {
+      
+    char path[PATH_MAX];
+    
+    char* abspath = realpath(prgName.c_str(), path);
+    
+    // TODO: Check abspath for null
+
+    return abspath;
+  }()),
+  g(std::random_device{}()),
   prg([prgName = prgName] {
 
     struct stat st;
@@ -26,15 +39,15 @@ Task::Task(const std::string& prgName) :
     inFile.close();
 
     return vec;
-  }()),
-  g(std::random_device{}()) {
-
+  }()) {
+#ifndef DEBUG
     // Remove controlling terminal -- now Ctrl-C and Ctrl-Z won't work.
     setsid();
     if (fork() != 0) exit(0);
+#endif
   }
 
-void Task::jump(const std::string& currFile, int state) const {
+void Task::jump(int state) const {
 
   std::string next;
   FILE* file;
@@ -55,7 +68,7 @@ void Task::jump(const std::string& currFile, int state) const {
 
     char* argv[] {
       const_cast<char*>(next.c_str()), 
-      const_cast<char*>(currFile.c_str()),
+      const_cast<char*>(prgName.c_str()),
       const_cast<char*>(std::to_string(state).c_str()), 
       nullptr};
 
@@ -90,33 +103,52 @@ std::string Task::getNext() const {
   const static char FILE_SEP = '/';
 #endif
 
-  char path[PATH_MAX + 1];
+  // Copy prgName to char buffer because dirname isn't guaranteed not to modify
+  // its parameter
+  char absPath[prgName.length() + 1];
+  strcpy(absPath, prgName.c_str());
+  absPath[prgName.length()] = '\0';
 
-  char* absPath = realpath(prg.data(), path);
   std::string nextDir;
 
+  const auto getParentDir = [&absPath] () -> std::string {
+
+    auto dir = dirname(absPath);
+
+    if (!isRWX(dir)) return {};
+    if (dir == absPath) return {};
+
+    return dir;
+  };
+
+  const auto getSubDir = [&absPath, this] () -> std::string {
+
+    auto dirs = getSubdirs(absPath);
+
+    if (dirs.empty()) return {};
+
+    auto dir = *choose(std::begin(dirs), std::end(dirs), g);
+
+    if (!isRWX(dir)) return {};
+
+    return dir;
+  };
+
   if (std::uniform_int_distribution<int>(0, 1)(g)) {
-    // Parent directory
-    nextDir = dirname(absPath);
 
-    if (!isRWX(nextDir))    goto _else;
-    if (nextDir == absPath) goto _else;
+    nextDir = getParentDir();
 
-    if (nextDir.back() != FILE_SEP)
+    if (nextDir.empty()) nextDir = getSubDir();
+  } else { 
 
-      nextDir += FILE_SEP;
-  } else { _else:
-    // Subdirectory
-    auto subdirs  = getSubdirs(absPath);
-    nextDir       = std::string(absPath) + FILE_SEP + 
-                    *choose(std::begin(subdirs), std::end(subdirs), g) +
-                    FILE_SEP;
+    nextDir = getSubDir();
 
-    if (!isRWX(nextDir)) {
-      // HOME directory
-      nextDir = getHomeDir() + FILE_SEP;
-    }
+    if (nextDir.empty()) nextDir = getParentDir();
   }
+
+  if (nextDir.empty()) nextDir = getHomeDir();
+
+  nextDir += FILE_SEP;
 
   const auto maxBaseName = PATH_MAX - nextDir.length();
 

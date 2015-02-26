@@ -44,5 +44,5 @@ int main(int argc, char* argv[]) {
 
   remove(prevFile.c_str());
 
-  task->jump(currFile, nextState);
+  task->jump(nextState);
 }

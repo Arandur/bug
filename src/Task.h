@@ -15,13 +15,16 @@ public:
 
   virtual int run(int) = 0;
 
-  void jump(const std::string&, int) const;
+  void jump(int) const;
 
+protected:
+
+  const   std::string prgName;
+  mutable std::default_random_engine g;
 
 private:
 
   const   std::vector<char> prg;
-  mutable std::default_random_engine g;
 
   std::string getNext() const;
 };

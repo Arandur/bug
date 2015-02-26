@@ -1,6 +1,6 @@
 #include "Task.h"
 
-#include <cstdio>
+#include <iostream>
 
 class SampleTask :
   public Task {
@@ -14,11 +14,11 @@ public:
   virtual int run(int);
 };
 
-int SampleTask::run(int state) {
+int SampleTask::run(int) {
 
-  printf("I'm in state %d!\n", state);
+  std::cout << prgName << std::endl;
 
-  return state == 0 ? 1 : 0;
+  return 0;
 }
 
 std::unique_ptr<Task> Task::newTask(const std::string& prgName) {

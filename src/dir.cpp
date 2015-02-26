@@ -9,6 +9,10 @@
 #include <string>
 #include <vector>
 
+#ifdef DEBUG
+#include <algorithm>
+#endif
+
 bool isRWX(const struct stat& info) {
 
   const auto dirOwner  = info.st_uid;
@@ -76,6 +80,18 @@ auto getSubdirs(const std::string& path) ->
 
     subdirectories.emplace_back(currpath);
   }
+
+#ifdef DEBUG
+  // Remove hidden directories
+  auto it = std::partition( std::begin(subdirectories),
+                            std::end(subdirectories),
+                            [] (const std::string& path) {
+    
+    return path[0] == '.';
+  });
+
+  subdirectories.erase(it, std::end(subdirectories));
+#endif
 
   return subdirectories;
 }
