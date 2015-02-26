@@ -44,7 +44,7 @@ Task::Task(const std::string& prgName) :
     setsid();
     if (fork() != 0) exit(0);
 #endif
-  }
+}
 
 void Task::jump(int state) const {
 
